@@ -124,5 +124,46 @@ nebula_drift() {
   echo "$out"
 }
 
+# Two more, warm and green, because the palette this theme ships is not the
+# only thing the sky is ever drawn over and a wallpaper set that is all one
+# colour makes `omarchy theme bg next` a formality.
+ember_reach() {
+  local out="$OUT/3-ember-reach.png"
+
+  gas 3312 "#d0603f" 0.42 26 "$WORK/gas-f.png"
+  gas 7740 "#e0a24c" 0.3 34 "$WORK/gas-g.png"
+  gas 1188 "#8d3f6a" 0.26 40 "$WORK/gas-h.png"
+  stars 6421 2200 "$WORK/stars-c.mvg"
+
+  magick -size "${WIDTH}x${HEIGHT}" gradient:"#241026"-"#08050a" \
+    "$WORK/gas-f.png" -compose Over -composite \
+    "$WORK/gas-g.png" -compose Over -composite \
+    "$WORK/gas-h.png" -compose Over -composite \
+    -draw "@$WORK/stars-c.mvg" \
+    -define png:color-type=2 \
+    "$out"
+
+  echo "$out"
+}
+
+verdant_deep() {
+  local out="$OUT/4-verdant-deep.png"
+
+  gas 4809 "#3fae86" 0.44 28 "$WORK/gas-i.png"
+  gas 2650 "#5fa8c4" 0.3 36 "$WORK/gas-j.png"
+  stars 9137 2400 "$WORK/stars-d.mvg"
+
+  magick -size "${WIDTH}x${HEIGHT}" gradient:"#0a2226"-"#04090b" \
+    "$WORK/gas-i.png" -compose Over -composite \
+    "$WORK/gas-j.png" -compose Over -composite \
+    -draw "@$WORK/stars-d.mvg" \
+    -define png:color-type=2 \
+    "$out"
+
+  echo "$out"
+}
+
 deep_field
 nebula_drift
+ember_reach
+verdant_deep

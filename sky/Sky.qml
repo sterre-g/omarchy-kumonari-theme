@@ -53,16 +53,6 @@ Item {
   property string wearing: ""
   readonly property bool worn: root.wearing === root.mine
 
-  /**
-   * The gas. Two of them are named here rather than taken from the palette
-   * because the shell only publishes accent, foreground, background, muted and
-   * urgent, and a sky with one hue in it is a fog. They are `magenta` and
-   * `cyan` out of this theme's own `colors.toml`; the third follows the accent,
-   * so a `colors.toml` overlaid on this theme still reaches the sky.
-   */
-  readonly property color drift: "#bb8cf5"
-  readonly property color haze: "#63dcd4"
-
   FileView {
     path: root.stateHome + "/omarchy/current/theme.name"
     printErrors: false
@@ -73,6 +63,78 @@ Item {
     // `text()` still holds the old contents inside the change signal itself, so
     // both paths go through a reload rather than one of them reading stale.
     onFileChanged: reload()
+  }
+
+  /**
+   * The colours the sky is made of, out of the theme's own `colors.toml`.
+   *
+   * The shell publishes five colours and no more: foreground, background,
+   * accent, urgent, muted. That is enough to tint something and not enough to
+   * build a sky out of, because a nebula wants several hues that are not each
+   * other and a palette of one accent gives a fog. The file has the rest of
+   * them, so the file is read.
+   *
+   * ## Read on the theme changing, not watched
+   *
+   * `omarchy-theme-set` builds the next theme in a staging directory and then
+   * `mv`s it over `current/theme`, so every file in there is a new inode on
+   * every switch and an inotify watch on `colors.toml` dies with the first one.
+   * `theme.name` survives because it is written in place, which makes it the
+   * thing to watch and this the thing to re-read when it moves.
+   *
+   * That ordering is also why this is not a race: the theme directory is moved
+   * into place before `theme.name` is written, so by the time the name says
+   * kumonari, kumonari's `colors.toml` is already the file at that path.
+   */
+  property var palette: Sky.palette({}, root.shellColours)
+
+  readonly property var shellColours: ({
+    accent: String(Color.accent),
+    background: String(Color.background),
+    foreground: String(Color.foreground),
+  })
+
+  function rereadPalette() {
+    paletteFile.reload()
+  }
+
+  onWearingChanged: root.rereadPalette()
+
+  // The shell can repaint from an IPC payload without any file this watches
+  // having moved, so the palette follows that too. Cheap: a parse of thirty
+  // lines, only when the desktop actually changes colour.
+  onShellColoursChanged: root.rereadPalette()
+
+  FileView {
+    id: paletteFile
+
+    path: root.stateHome + "/omarchy/current/theme/colors.toml"
+    printErrors: false
+    watchChanges: false
+
+    onLoaded: root.palette = Sky.palette(Sky.parsePalette(text()), root.shellColours)
+    // A theme is not obliged to ship colours at all: one of mine is an empty
+    // directory. The shell's own five are the floor, and a sky can be built out
+    // of an accent alone.
+    onLoadFailed: root.palette = Sky.palette({}, root.shellColours)
+  }
+
+  /**
+   * Which day it is, which is what the sky is rolled from.
+   *
+   * `SystemClock` and not a `Timer`, and that distinction has bitten this
+   * codebase's neighbour before: a Timer counts monotonic time, which is time
+   * this machine has been awake for, so a laptop closed at eleven and opened at
+   * nine still has most of the night left to run on its counter and goes on
+   * showing yesterday's planets. `SystemClock` is the wall clock, which is the
+   * thing a calendar day is actually a function of.
+   */
+  property int today: Sky.daySeed()
+
+  SystemClock {
+    precision: SystemClock.Minutes
+
+    onDateChanged: root.today = Sky.daySeed()
   }
 
   Variants {
@@ -146,8 +208,8 @@ Item {
        * Every running animation in Qt Quick asks for a frame, and a frame here
        * is the whole of a 2560 by 1600 layer surface redrawn. It costs the same
        * whether the thing that moved crossed the screen or moved a fifth of a
-       * pixel, and at these speeds it is nearly always the second: the moon
-       * covers about 7px a second and the outermost star a fraction of that.
+       * pixel, and at these speeds it is nearly always the second: the moons
+       * cover a few pixels a second and the outermost star a fraction of that.
        *
        * Written the obvious way, with a `NumberAnimation` per moving part, this
        * cost about 10% of a core on a 2560x1600 screen. Turning off half the
@@ -187,104 +249,32 @@ Item {
        */
       readonly property int seed: Sky.hash(panel.modelData.name || "sky")
 
+      /**
+       * Tonight, on this screen.
+       *
+       * The day and the monitor together, so that both hold: a new sky every
+       * morning, and two screens that are one evening rather than one picture
+       * printed twice. Re-rolled when `today` moves, which is at midnight and
+       * when a lid comes up on a different date.
+       */
+      readonly property var plan: Sky.plan(panel.seed ^ root.today, root.palette.hues, panel.width / Math.max(1, panel.height))
+
       ScreenMoveRemap {
         id: remapGuard
 
         window: panel
       }
 
-      Nebula {
-        elapsed: panel.elapsed
-        hue: root.drift
-        ink: 0.15
-        reach: panel.height * 0.44
-        squash: 0.58
-        tilt: -18
-        x: panel.width * 0.2 - width / 2
-        y: panel.height * 0.3 - height / 2
-      }
-
-      Nebula {
-        elapsed: panel.elapsed
-        hue: root.haze
-        ink: 0.1
-        period: 67000
-        reach: panel.height * 0.32
-        squash: 0.7
-        tilt: 24
-        wander: 97000
-        x: panel.width * 0.74 - width / 2
-        y: panel.height * 0.16 - height / 2
-      }
-
-      Nebula {
-        elapsed: panel.elapsed
-        hue: Color.accent
-        ink: 0.12
-        period: 89000
-        reach: panel.height * 0.5
-        squash: 0.42
-        tilt: 6
-        wander: 143000
-        x: panel.width * 0.46 - width / 2
-        y: panel.height * 0.92 - height / 2
-      }
-
-      // Three depths, each about its own pole, so they pull apart as they turn
-      // instead of moving as one sheet with three sizes of dot in it.
-      Starfield {
+      // Everything that is actually drawn, which is next door in `Scene.qml`
+      // because none of it needs to know about Wayland. That split is what
+      // lets `preview.qml` render any day of this offscreen.
+      Scene {
         anchors.fill: parent
-        count: 170
-        dim: 0.55
         elapsed: panel.elapsed
-        hue: Color.foreground
-        poleX: -panel.width * 0.25
-        poleY: panel.height * 1.35
-        seed: panel.seed
-        size: 0.85
-        turn: 3600000
-      }
-
-      Starfield {
-        anchors.fill: parent
-        count: 95
-        dim: 0.8
-        elapsed: panel.elapsed
-        hue: Color.foreground
-        poleX: -panel.width * 0.3
-        poleY: panel.height * 1.4
-        seed: panel.seed ^ 0x9e37
-        size: 1.15
-        turn: 2400000
-      }
-
-      Starfield {
-        anchors.fill: parent
-        count: 40
-        dim: 1
-        elapsed: panel.elapsed
-        hue: Color.foreground
-        poleX: -panel.width * 0.35
-        poleY: panel.height * 1.45
-        seed: panel.seed ^ 0x51ed
-        size: 1.6
-        turn: 1500000
-      }
-
-      Planet {
-        elapsed: panel.elapsed
-        hue: "#243356"
-        lit: Color.accent
-        period: 214000
-        span: panel.height * 0.15
-        x: panel.width * 0.79 - width / 2
-        y: panel.height * 0.74 - height / 2
-      }
-
-      Comet {
-        anchors.fill: parent
-        hue: Color.foreground
+        palette: root.palette
+        plan: panel.plan
         running: panel.live
+        seed: panel.seed
       }
     }
   }
