@@ -1,0 +1,5 @@
+#!/bin/bash
+# The whole of the test suite, which is the arithmetic and none of the drawing.
+set -euo pipefail
+cd "$(dirname "$0")"
+node test/sky.test.js

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "kumonari.sky",
+  "name": "Kumonari sky",
+  "version": "1.0.0",
+  "author": "sterre-g",
+  "description": "A deep field over the wallpaper, drawn only while the Kumonari theme is worn",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Sky.qml"
+  }
+}

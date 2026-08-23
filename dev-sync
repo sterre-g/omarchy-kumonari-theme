@@ -1,0 +1,11 @@
+#!/bin/bash
+# The working tree into the installed plugin, without going through git.
+#
+# Adding a file this way still needs `omarchy restart shell`: Qt serves a cached
+# directory listing and reports a file name case mismatch for anything that was
+# not there when the shell started. Editing a file that already exists reloads
+# on save.
+set -euo pipefail
+cd "$(dirname "$0")"
+rsync -a --delete sky/ "$HOME/.config/omarchy/plugins/kumonari.sky/"
+echo "Synced to ~/.config/omarchy/plugins/kumonari.sky"
