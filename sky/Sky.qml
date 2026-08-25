@@ -131,11 +131,29 @@ Item {
    */
   property int today: Sky.daySeed()
 
+  /**
+   * How far round the day the colour has come, 0 to 1, counted from six in the
+   * evening.
+   *
+   * The sky is the theme's colours and stays the theme's colours; this is a
+   * small turn either side of them so that an evening and the small hours are
+   * not the same picture. Counted from the evening rather than from midnight
+   * because that is when somebody starts looking at it, and a drift that turns
+   * over in the middle of a sitting is a drift somebody watches happen.
+   */
+  property real night: 0
+
   SystemClock {
+    id: clock
+
     precision: SystemClock.Minutes
 
     onDateChanged: root.today = Sky.daySeed()
   }
+
+  readonly property int minuteOfDay: clock.hours * 60 + clock.minutes
+
+  onMinuteOfDayChanged: root.night = ((root.minuteOfDay - 18 * 60 + 1440) % 1440) / 1440
 
   Variants {
     model: Quickshell.screens
@@ -200,47 +218,6 @@ Item {
       readonly property bool live: root.worn && panel.bare
 
       /**
-       * The clock the whole sky moves on, in ms since this screen last had
-       * nothing on it.
-       *
-       * ## Why there is a clock and not twenty animations
-       *
-       * Every running animation in Qt Quick asks for a frame, and a frame here
-       * is the whole of a 2560 by 1600 layer surface redrawn. It costs the same
-       * whether the thing that moved crossed the screen or moved a fifth of a
-       * pixel, and at these speeds it is nearly always the second: the moons
-       * cover a few pixels a second and the outermost star a fraction of that.
-       *
-       * Written the obvious way, with a `NumberAnimation` per moving part, this
-       * cost about 10% of a core on a 2560x1600 screen. Turning off half the
-       * scene changed nothing, and turning off the other half changed nothing
-       * either, which is the shape of a cost that is per frame rather than per
-       * moving part.
-       *
-       * So the frames are rationed instead. One timer steps a number and
-       * everything up here is a binding on it. Five frames a second of motion
-       * this slow is not distinguishable from sixty, and the same sky measures
-       * 1.8% against a 0.1% shell that is drawing nothing. The other half of
-       * that came from caching the gradients; see `Glow.qml`.
-       *
-       * Raise the rate if you want, it is one number. The comet does not use it
-       * and keeps its own animations: it crosses in about a second and would be
-       * a flip book at this rate. It is also the only thing here that is not
-       * drawing most of the time.
-       */
-      property real elapsed: 0
-
-      readonly property int tick: 200
-
-      Timer {
-        interval: panel.tick
-        repeat: true
-        running: panel.live
-
-        onTriggered: panel.elapsed += panel.tick
-      }
-
-      /**
        * A different sky per monitor, and the same one back after a reboot.
        *
        * Two screens seeded alike are the same field of stars twice, which is
@@ -265,16 +242,15 @@ Item {
         window: panel
       }
 
-      // Everything that is actually drawn, which is next door in `Scene.qml`
+      // Everything that is actually drawn, which is next door in `Field.qml`
       // because none of it needs to know about Wayland. That split is what
-      // lets `preview.qml` render any day of this offscreen.
-      Scene {
+      // lets `preview.qml` render any day of this without the theme being worn.
+      Field {
         anchors.fill: parent
-        elapsed: panel.elapsed
+        night: root.night
         palette: root.palette
         plan: panel.plan
         running: panel.live
-        seed: panel.seed
       }
     }
   }

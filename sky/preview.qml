@@ -12,9 +12,20 @@ import "Sky.js" as Sky
  *   bin/preview.sh                    a week of this theme's palette
  *   bin/preview.sh --theme gruvbox    the same week in somebody else's
  *
- * `Scene.qml` is all this draws and all the desktop draws, so a day that looks
+ * `Field.qml` is all this draws and all the desktop draws, so a day that looks
  * right here looks right there. The half that knows about Wayland does not draw
  * anything, which is why it can be left out.
+ *
+ * ## It needs a real screen to draw on
+ *
+ * Not offscreen, which is what this used to be. Qt's `offscreen` platform has
+ * no shader in it: a `ShaderEffect` under it draws nothing and says nothing
+ * about it, so every still comes out as the bare background and the only clue
+ * is that the file is a few kilobytes. That cost an hour once, chasing a bug in
+ * a shader that was never being run.
+ *
+ * A shader of one line that fills the screen red is the check, if this ever
+ * comes out blank again. If red comes out black it is the platform, not the sky.
  */
 Item {
   id: shot
@@ -79,6 +90,9 @@ Item {
 
   property string over: ""
 
+  /** How far through the night a still is taken, 0 to 1. Midnight by default. */
+  property real night: 0.5
+
   Rectangle {
     id: frame
 
@@ -101,15 +115,15 @@ Item {
       visible: shot.over !== ""
     }
 
-    Scene {
+    Field {
       anchors.fill: parent
       // Far enough in that the slow things have somewhere to have got to, so a
       // preview is not every moon frozen at its own starting angle.
-      elapsed: 90000
+      from: 400
+      night: shot.night
       palette: shot.palette
       plan: Sky.plan(shot.seed ^ Sky.daySeed(shot.dayAfter(shot.drawn)), shot.palette.hues, shot.wide / shot.tall)
       running: false
-      seed: shot.seed
     }
   }
 

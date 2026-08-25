@@ -6,9 +6,10 @@
 #   bin/preview.sh --days 3 --seed 7 --size 1800x1012
 #   bin/preview.sh --over backgrounds/1-deep-field.png
 #
-# Offscreen, so it needs no compositor and touches nothing on screen. This is
-# the way to look at a wallpaper that is different every morning without
-# waiting a week for the week.
+# The way to look at a wallpaper that is different every morning without waiting
+# a week for the week. It needs the desktop it is run from, since the sky is
+# drawn by a shader and Qt's offscreen platform has none, but it does not need
+# the theme to be worn and it does not touch what is on screen.
 
 set -euo pipefail
 
@@ -56,7 +57,10 @@ RUNNER=$(command -v qml6 || command -v qml) || {
 PALETTE64=""
 [[ -n $PALETTE && -f $PALETTE ]] && PALETTE64=$(base64 -w 0 "$PALETTE")
 
-QT_QPA_PLATFORM=offscreen "$RUNNER" sky/preview.qml -- \
+# On whatever platform the session is already on, and not `offscreen`, which
+# renders a `ShaderEffect` as nothing at all without reporting it. The window
+# this opens is real and shows for as long as the render takes.
+"$RUNNER" sky/preview.qml -- \
   --days "$DAYS" --out "$OUT" --seed "$SEED" --palette64 "$PALETTE64" \
   --wide "$WIDE" --tall "$TALL" --over "$OVER"
 

@@ -81,7 +81,7 @@ colours in it does not spend every night showing the same two.
 ## Looking at it without waiting a week
 
 A wallpaper that changes every morning is awkward to check by looking at it. So
-it renders offscreen:
+it renders whichever days you ask for, straight to PNGs:
 
 ```sh
 bin/preview.sh                    # the next seven days, this theme's palette
@@ -89,9 +89,15 @@ bin/preview.sh --theme gruvbox    # the same seven in somebody else's
 bin/preview.sh --days 30 --seed 7
 ```
 
-No compositor, no theme switch, nothing on screen touched. `sky/Scene.qml` is
-everything that draws and is plain Qt Quick, which is what makes this possible;
-`sky/Sky.qml` next to it holds the Wayland half and draws nothing.
+No theme switch and nothing on screen touched. `sky/Field.qml` is everything
+that draws and is plain Qt Quick with no Quickshell in it, which is what makes
+this possible; `sky/Sky.qml` next to it holds the Wayland half and draws
+nothing.
+
+It does need the desktop it is run from, which it did not used to. The sky is a
+shader now, and Qt's `offscreen` platform has no shader in it: a `ShaderEffect`
+under it draws nothing at all and reports nothing, so every still comes out as
+the bare background.
 
 ## The sky stops when the theme does
 
@@ -127,22 +133,34 @@ theme is.
 
 ## What it costs
 
-Measured on a 2560x1600 screen with nothing else on the desktop:
+The sky is drawn by one fragment shader. There is no item per star, no binding
+per moon, and what the processor does per frame is add one number to a uniform.
 
-| | omarchy-shell |
+Measured on a 2560x1600 screen with nothing else on it, against a shell whose
+sky is present but not moving:
+
+| omarchy-shell | |
 |---|---|
-| Kumonari, sky drawing | 1.4% of a core |
-| Any other theme | 0.3% of a core |
-| Kumonari, a window over the desktop | 0.3% of a core |
+| Kumonari, sky drawing | 2.0% of a core |
+| Kumonari, a window over the desktop | 0.2% of a core |
+| the same scene as QML items, same rate | 3.6% of a core |
+| the same scene as QML items, every frame | 12.0% of a core |
 
-Nothing here is animated in the usual sense. One timer steps a number five times
-a second and every moving thing is a binding on it, because a running animation
-in Qt Quick asks for a frame and a frame is the whole surface redrawn, at the
-same cost whether the moon crossed the screen or moved a fifth of a pixel.
-Written the obvious way this was 10% of a core. The rate is one number at the
-top of `sky/Sky.qml` if you want it smoother.
+The last two rows are what this replaced and why. A frame here is a whole layer
+surface redrawn and costs about 0.11% of a core for every frame a second,
+whoever draws it; what the shader took out is everything on top of that, which
+was most of it.
 
-The last row is the other half of it: `Hyprland.toplevels` says whether this
+Frames are still rationed, but by speed rather than by clock. Nothing up there
+moves faster than about eight pixels a second, which is under a pixel between
+frames at twelve a second, and motion under a pixel does not step however few
+frames it arrives in. The old sky ran at five a second with moons crossing ten
+pixels between frames, which is the same sky hopping. A meteor is the one thing
+fast enough to care, so it is the one thing that gets the card's own rate, for
+the second it takes to cross. `idle` at the top of `sky/Field.qml` is the rate
+if you want a different one.
+
+The second row is the other half of it: `Hyprland.toplevels` says whether this
 monitor is showing its desktop at all, and a single window over it stops the
 clock. A sky nobody can see costs one idle timer.
 
@@ -164,24 +182,36 @@ omarchy theme remove kumonari
 colors.toml          the palette, and the only file the theme strictly needs
 backgrounds/         the still pictures
 bin/backgrounds.sh   which is where they come from
-bin/preview.sh       render days offscreen, any theme, no compositor
+bin/preview.sh       render days to PNGs, any theme, without wearing it
+bin/build-shaders.sh compile sky.frag to the .qsb the desktop loads
 sky/                 the shell plugin, id kumonari.sky
-  Sky.js               all the arithmetic: palette, day, plan, star field
-  Sky.qml              the Wayland half: layer surface, theme gate, clock
-  Scene.qml            everything that actually draws
-  Planet.qml           a world, built to whatever the day rolled
-  Nebula.qml Glow.qml Starfield.qml Comet.qml Galaxy.qml Belt.qml
-  preview.qml          Scene.qml, rendered to PNGs
+  Sky.js               all the arithmetic: palette, day, plan
+  Sky.qml              the Wayland half: layer surface, theme gate, wall clock
+  Field.qml            the plan as uniforms, and the clock
+  sky.frag             everything that actually draws
+  sky.frag.qsb         the same, compiled, and committed
+  preview.qml          Field.qml, rendered to PNGs
 test/                the arithmetic, under node
 ```
 
+`sky.frag.qsb` is committed because nothing on the desktop this installs onto
+has Qt's shader tools on it. Rebuild it with `bin/build-shaders.sh` after
+changing the `.frag` and commit both halves. That script also checks the bundle
+has a GLSL ES shader in it, which is not a formality: Quickshell comes up on
+OpenGL ES, and a bundle built for desktop GL alone draws nothing whatever while
+saying so only in the journal.
+
 `sky/Sky.js` is where anything can go wrong: the colour parsing and lifting, the
-day seed, the layout roll, and the star field. It runs under node as well as
-QML, so `./run-tests` covers all of it without a compositor in the room. Worth
-knowing about the two pieces that look arbitrary and are not: stars are spread
-evenly over a disc rather than evenly along its radius, which is the difference
-between a sky and a bullseye; and worlds are rolled with a separation check, so
-two of them never touch.
+day seed and the layout roll. It runs under node as well as QML, so `./run-tests`
+covers all of it without a compositor in the room.
+
+What it decides is which night it is: how many worlds and where, what colour,
+rings or not, how much sky, and whether tonight has a galaxy or a belt in it.
+The detail below that is drawn rather than planned, since a fragment shader can
+roll a number as well as a JavaScript file can: how many moons a world has, how
+far out and how fast, and where its weather sits all come out of the one `seed`
+the plan hands over. Worth knowing about the piece that looks arbitrary and is
+not: worlds are rolled with a separation check, so two of them never touch.
 
 ```sh
 ./run-tests          the test suite, 31 cases

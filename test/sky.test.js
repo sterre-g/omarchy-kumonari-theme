@@ -330,22 +330,34 @@ test("worlds stay on the screen and off each other", () => {
   }
 });
 
-test("moons and weather are the shapes Planet.qml reads", () => {
+test("every world carries the seed its detail is drawn from", () => {
+  // Moons and weather are rolled in `sky.frag` off this number rather than
+  // planned here, so what this file still owes them is a seed that is a whole
+  // number in range, the same one back for the same night, and not the same one
+  // for two worlds on one night, which would be one planet's moons twice.
   for (let seed = 0; seed < 200; seed++) {
-    for (const world of Sky.plan(seed, hues, 1.6).worlds) {
-      for (const moon of world.moons) {
-        assert.ok(moon.away > 1 && moon.size > 0 && moon.period > 0);
-        assert.ok(moon.phase >= 0 && moon.phase < 1);
-        assert.ok(moon.tilt > 0 && moon.tilt < 1);
-      }
+    const seen = new Set();
 
-      for (const band of world.bands) {
-        // Outside -1..1 a band is past the pole and has no width to draw.
-        assert.ok(band.at > -1 && band.at < 1, `a band sat at ${band.at}`);
-        assert.ok(band.thick > 0 && band.thick < 0.2);
-      }
+    for (const world of Sky.plan(seed, hues, 1.6).worlds) {
+      assert.ok(Number.isInteger(world.seed), `a world's seed was ${world.seed}`);
+      assert.ok(world.seed >= 0 && world.seed < 65536);
+      assert.ok(!seen.has(world.seed), `two worlds shared a seed on ${seed}`);
+      seen.add(world.seed);
     }
   }
+});
+
+test("a night is sometimes bare and sometimes has something in it", () => {
+  // Half of them bare, and the other half split between the two. A feature so
+  // rare that a fortnight goes by without one is not restraint, it is a feature
+  // nobody knows the sky has.
+  const seen = { galaxy: 0, belt: 0, none: 0 };
+
+  for (let seed = 0; seed < 600; seed++) seen[Sky.plan(seed, hues, 1.6).feature] += 1;
+
+  assert.ok(seen.galaxy > 80, `only ${seen.galaxy} galaxies in 600 nights`);
+  assert.ok(seen.belt > 80, `only ${seen.belt} belts in 600 nights`);
+  assert.ok(seen.none > 200, `only ${seen.none} plain nights in 600`);
 });
 
 test("a day picks its own corner of the palette", () => {

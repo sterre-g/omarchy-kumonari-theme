@@ -366,9 +366,9 @@ function plan(seed, hues, aspect) {
   for (var i = 0; i < clouds; i++) {
     nebulae.push({
       hue: hue(i),
-      ink: 0.11 + 0.1 * roll(),
+      ink: 0.10 + 0.13 * roll(),
       period: 47000 + Math.floor(roll() * 55000),
-      reach: 0.28 + 0.26 * roll(),
+      reach: 0.24 + 0.34 * roll(),
       squash: 0.38 + 0.4 * roll(),
       sway: 26 + Math.floor(roll() * 34),
       tilt: -30 + roll() * 60,
@@ -403,35 +403,10 @@ function plan(seed, hues, aspect) {
     if (!at) continue;
 
     var rings = roll() < 0.55;
-    var moons = [];
-    var wantedMoons = Math.floor(roll() * 3);
-
-    for (var m = 0; m < wantedMoons; m++) {
-      moons.push({
-        away: 1.35 + 0.5 * m + 0.4 * roll(),
-        lit: roll() < 0.5,
-        period: 96000 + Math.floor(roll() * 190000),
-        phase: roll(),
-        size: 0.08 + 0.05 * roll(),
-        tilt: 0.1 + 0.3 * roll(),
-      });
-    }
-
-    var bands = [];
-    var wantedBands = roll() < 0.45 ? 2 + Math.floor(roll() * 4) : 0;
-
-    for (var b = 0; b < wantedBands; b++) {
-      bands.push({
-        at: -0.72 + 1.44 * roll(),
-        light: roll() < 0.5,
-        thick: 0.05 + 0.09 * roll(),
-      });
-    }
 
     var lit = hue(w + 1)
 
     worlds.push({
-      bands: bands,
       // The body is that same colour taken right down, so a world is lit by its
       // own star rather than every planet in the sky being one shade of the
       // theme's background. Saturation comes down with the lightness: a fully
@@ -439,9 +414,20 @@ function plan(seed, hues, aspect) {
       // way off, and the light rim the gradient adds pushes it further still.
       body: sink(lit, 0.42, 0.17),
       hue: lit,
-      moons: moons,
       rings: rings,
       ringTilt: 0.12 + 0.22 * roll(),
+      /**
+       * What its moons and its weather are rolled from.
+       *
+       * The fine detail of a world is drawn rather than planned. `sky.frag`
+       * hashes this into how many moons there are, how far out and how fast,
+       * and where the bands sit, because a fragment shader can roll a number
+       * as well as this file can and doing it there is fifty-odd uniforms that
+       * never have to be pushed across for something the eye reads as "it has
+       * moons". What stays here is what the eye reads as which night it is:
+       * how many worlds, where, what colour, and whether they have rings.
+       */
+      seed: Math.floor(roll() * 65536),
       span: span,
       spin: 150000 + Math.floor(roll() * 130000),
       x: at.x,
@@ -449,10 +435,14 @@ function plan(seed, hues, aspect) {
     });
   }
 
-  // One thing a day that is not a planet, and most days none, so that the day
-  // it turns up it is worth looking at rather than furniture.
+  // One thing a night that is not a planet, and half of them none, so that the
+  // night it turns up it is worth looking at rather than furniture.
+  //
+  // It used to be two nights in five. That is rare enough that a fortnight can
+  // go by without one, which is not restraint, it is a feature nobody knows the
+  // sky has.
   var luck = roll();
-  var feature = luck < 0.22 ? "galaxy" : luck < 0.4 ? "belt" : "none";
+  var feature = luck < 0.26 ? "galaxy" : luck < 0.5 ? "belt" : "none";
 
   return {
     belt: {
@@ -470,9 +460,11 @@ function plan(seed, hues, aspect) {
       lean: -40 + roll() * 80,
       reach: 0.1 + 0.09 * roll(),
     },
-    // A little more or less sky each night, which is the weather a place with
-    // no weather gets.
-    stars: 0.82 + 0.36 * roll(),
+    // A good deal more or less sky each night, which is the weather a place
+    // with no weather gets. The old spread was a sixth either side of the
+    // middle and no night was ever plainly darker or plainly thicker than the
+    // one before it.
+    stars: 0.68 + 0.7 * roll(),
     turn: turn,
     worlds: worlds,
   };
