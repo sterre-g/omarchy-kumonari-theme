@@ -164,6 +164,11 @@ The second row is the other half of it: `Hyprland.toplevels` says whether this
 monitor is showing its desktop at all, and a single window over it stops the
 clock. A sky nobody can see costs one idle timer.
 
+With animations turned off (`omarchy toggle animations`) the sky holds still on
+the frame it is on, on Omarchy shells new enough to report that setting; 4.0.6
+does not, and there it keeps moving. A locked screen has no signal a plugin can
+read, so the sky's clock keeps counting behind the lock screen.
+
 ## Removing it
 
 ```sh

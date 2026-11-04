@@ -155,6 +155,13 @@ Item {
 
   readonly property int minuteOfDay: clock.hours * 60 + clock.minutes
 
+  /**
+   * `omarchy toggle animations` turns the shell's motion off through
+   * `Style.reduceMotion`, which shells after 4.0.6 have. The sky then holds
+   * the frame it is on rather than drifting.
+   */
+  readonly property bool still: Commons.Style.reduceMotion === true // qmllint disable missing-property
+
   onMinuteOfDayChanged: root.night = ((root.minuteOfDay - 18 * 60 + 1440) % 1440) / 1440
 
   Variants {
@@ -252,7 +259,7 @@ Item {
         night: root.night
         colours: root.colours
         plan: panel.plan
-        running: panel.live
+        running: panel.live && !root.still
       }
     }
   }
