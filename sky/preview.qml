@@ -40,7 +40,7 @@ Item {
   property int drawn: 0
   property int saved: 0
 
-  readonly property var palette: Sky.palette(Sky.parsePalette(shot.toml), {
+  readonly property var colours: Sky.palette(Sky.parsePalette(shot.toml), {
     accent: "#8ab4ff",
     background: "#05070f",
     foreground: "#c9d2ec",
@@ -97,7 +97,7 @@ Item {
     id: frame
 
     anchors.fill: parent
-    color: shot.palette.dark
+    color: shot.colours.dark
 
     // Flat by default, where a real desktop has a wallpaper. On purpose: the
     // point of a preview is usually the sky, and a picture behind it hides
@@ -121,8 +121,8 @@ Item {
       // preview is not every moon frozen at its own starting angle.
       from: 400
       night: shot.night
-      palette: shot.palette
-      plan: Sky.plan(shot.seed ^ Sky.daySeed(shot.dayAfter(shot.drawn)), shot.palette.hues, shot.wide / shot.tall)
+      colours: shot.colours
+      plan: Sky.plan(shot.seed ^ Sky.daySeed(shot.dayAfter(shot.drawn)), shot.colours.hues, shot.wide / shot.tall)
       running: false
     }
   }

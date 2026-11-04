@@ -1,9 +1,11 @@
+pragma ComponentBehavior: Bound
+
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Io
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Sky.js" as Sky
 
@@ -86,12 +88,12 @@ Item {
    * into place before `theme.name` is written, so by the time the name says
    * kumonari, kumonari's `colors.toml` is already the file at that path.
    */
-  property var palette: Sky.palette({}, root.shellColours)
+  property var colours: Sky.palette({}, root.shellColours)
 
   readonly property var shellColours: ({
-    accent: String(Color.accent),
-    background: String(Color.background),
-    foreground: String(Color.foreground),
+    accent: String(Commons.Color.accent),
+    background: String(Commons.Color.background),
+    foreground: String(Commons.Color.foreground),
   })
 
   function rereadPalette() {
@@ -112,11 +114,11 @@ Item {
     printErrors: false
     watchChanges: false
 
-    onLoaded: root.palette = Sky.palette(Sky.parsePalette(text()), root.shellColours)
+    onLoaded: root.colours = Sky.palette(Sky.parsePalette(text()), root.shellColours)
     // A theme is not obliged to ship colours at all: one of mine is an empty
     // directory. The shell's own five are the floor, and a sky can be built out
     // of an accent alone.
-    onLoadFailed: root.palette = Sky.palette({}, root.shellColours)
+    onLoadFailed: root.colours = Sky.palette({}, root.shellColours)
   }
 
   /**
@@ -234,7 +236,7 @@ Item {
        * printed twice. Re-rolled when `today` moves, which is at midnight and
        * when a lid comes up on a different date.
        */
-      readonly property var plan: Sky.plan(panel.seed ^ root.today, root.palette.hues, panel.width / Math.max(1, panel.height))
+      readonly property var plan: Sky.plan(panel.seed ^ root.today, root.colours.hues, panel.width / Math.max(1, panel.height))
 
       ScreenMoveRemap {
         id: remapGuard
@@ -248,7 +250,7 @@ Item {
       Field {
         anchors.fill: parent
         night: root.night
-        palette: root.palette
+        colours: root.colours
         plan: panel.plan
         running: panel.live
       }

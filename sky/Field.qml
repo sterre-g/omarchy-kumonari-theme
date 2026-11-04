@@ -15,7 +15,7 @@ Item {
     id: field
 
     /** `{ ground, hues, ink }`, from `Sky.palette`. */
-    property var palette
+    property var colours
 
     /** A day on one screen, from `Sky.plan`. */
     property var plan
@@ -124,7 +124,7 @@ Item {
         property real seconds: 0
 
         property vector4d frame: Qt.vector4d(shader.width, shader.height, shader.seconds, field.night)
-        property vector4d ink: field.tint(field.palette ? field.palette.ink : "#c9d2ec", field.plan ? field.plan.stars : 1)
+        property vector4d ink: field.tint(field.colours ? field.colours.ink : "#c9d2ec", field.plan ? field.plan.stars : 1)
 
         property vector4d gas0: field.cloudHue(0)
         property vector4d gas1: field.cloudHue(1)
@@ -157,7 +157,7 @@ Item {
                           Math.abs(Math.sin(field.plan.belt.tilt * Math.PI / 180)) * 0.6 + 0.08)
             : Qt.vector4d(0, 0, 0, 0)
         property vector4d beltHue: field.plan
-            ? field.tint(field.palette ? field.palette.ink : "#c9d2ec", (field.plan.belt.period - 300000) / 240000)
+            ? field.tint(field.colours ? field.colours.ink : "#c9d2ec", (field.plan.belt.period - 300000) / 240000)
             : Qt.vector4d(0, 0, 0, 0)
 
         /** Where a meteor is falling, and `w` below zero while none is. */
