@@ -203,7 +203,8 @@ saying so only in the journal.
 
 `sky/Sky.js` is where anything can go wrong: the colour parsing and lifting, the
 day seed and the layout roll. It runs under node as well as QML, so `./run-tests`
-covers all of it without a compositor in the room.
+covers all of it without a compositor in the room, then validates the plugin
+manifest and runs Qt 6's `qmllint` over `sky/` against the installed shell.
 
 What it decides is which night it is: how many worlds and where, what colour,
 rings or not, how much sky, and whether tonight has a galaxy or a belt in it.
