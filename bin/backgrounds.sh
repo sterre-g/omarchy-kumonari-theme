@@ -64,24 +64,56 @@ gas() {
 # 29MB instead of a few hundred KB. A list of points is also the only way to say
 # how many stars there are and mean it.
 #
-# `Sky.js` scatters over a disc, so the count asked for is larger than the count
+# The stars scatter over a disc, so the count asked for is larger than the count
 # that lands: the disc has to circumscribe the frame and the corners of it fall
 # outside. Roughly four in seven survive at this shape.
+#
+# rng, hash and the scatter are those of Sky.js in kumonari.sky
+# (github.com/sterre-g/omarchy-kumonari-sky). Each star still draws all seven
+# numbers that `field` there draws, in the same order, though only position and
+# brightness are used here, so a seed keeps giving the same wallpaper.
 stars() {
   local seed=$1 count=$2 out=$3
 
   node -e '
-    const Sky = require("./sky/Sky.js");
+    function rng(seed) {
+      let t = (seed >>> 0) || 1;
+      return () => {
+        t = (t + 0x6d2b79f5) >>> 0;
+        let x = Math.imul(t ^ (t >>> 15), 1 | t);
+        x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function hash(name) {
+      const text = String(name);
+      let h = 2166136261;
+      for (let i = 0; i < text.length; i++) {
+        h ^= text.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
     const [seed, count, width, height] = process.argv.slice(1).map(Number);
+    const roll = rng(hash(seed));
+    const reach = Math.sqrt(width * width + height * height) / 2;
     const drawn = [];
 
-    for (const star of Sky.field(count, Sky.hash(seed), Math.sqrt(width * width + height * height) / 2)) {
-      const x = Math.round(star.x + width / 2);
-      const y = Math.round(star.y + height / 2);
+    for (let i = 0; i < count; i++) {
+      const radius = reach * Math.sqrt(roll());
+      const angle = 2 * Math.PI * roll();
+      roll(); // size
+      const dim = 0.3 + 0.7 * roll();
+      roll(); roll(); roll(); // twinkle, beat, phase
+
+      const x = Math.round(radius * Math.cos(angle) + width / 2);
+      const y = Math.round(radius * Math.sin(angle) + height / 2);
 
       if (x < 0 || y < 0 || x >= width || y >= height) continue;
 
-      drawn.push(`fill rgba(255,255,255,${(0.22 + 0.78 * star.dim).toFixed(2)}) point ${x},${y}`);
+      drawn.push(`fill rgba(255,255,255,${(0.22 + 0.78 * dim).toFixed(2)}) point ${x},${y}`);
     }
 
     process.stdout.write(drawn.join("\n"));
